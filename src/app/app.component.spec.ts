@@ -30,6 +30,7 @@ describe('AppComponent', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement;
-    expect(compiled.querySelector('.content span').textContent).toContain('demo app is running!');
+    expect(compiled.querySelector('.content span').textContent).toContain('demo app is running! Built from GitHub action.');
+    expect(compiled.querySelector('.content span').textContent).toContain('Repo url - https://github.com/amitech/angular-demo');
   });
 });
