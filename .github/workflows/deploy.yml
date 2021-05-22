@@ -1,0 +1,52 @@
+name: CI
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    # using Ubuntu
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-node@v1 #this installs node and npm for us
+      with:
+        node-version: '14.x'
+
+    - uses: actions/cache@v1 # this allows for re-using node_modules caching, making builds a bit faster.
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+
+    - name: NPM Install
+      run: npm install
+    - name: NPM Install Angular
+      run: npm install -g @angular/cli > /dev/null
+    - name: NPM build Angular Production
+      run: ng build --prod
+    - name: Install SSH Key
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.SSH_PRIVATE_KEY }} 
+        known_hosts: 'just-a-placeholder-so-we-dont-get-errors'
+    - name: Adding Known Hosts
+      run: ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+    - name: Delete Existing Files
+      run : ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'rm -rf /www/angular-demo/*'
+
+    - name: Compress and Copy New Files to server
+      run : |
+            cd dist/demo/
+            tar -czvf ../../demo.tar.gz ./
+            cd ../../
+            scp -v -o StrictHostKeyChecking=no -r demo.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/www/angular-demo
+    - name: Uncompress new Files
+      run : ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'cd /www/angular-demo && tar -xzvf demo.tar.gz && rm demo.tar.gz'
